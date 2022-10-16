@@ -1,15 +1,10 @@
-pipeline {
-    agent any
+node {
+    stage 'Checkout'
 
-    stages {
-        stage('Test') {
-            steps {
-                /* `make check` returns non-zero on test failures,
-                * using `true` to allow the Pipeline to continue nonetheless
-                */
-                sh 'make check || true' 
-                junit '**/target/*.xml' 
-            }
-        }
+    checkout scm
+
+    stage 'Gradle Static Analysis'
+    withSonarQubeEnv {
+        sh "./gradlew clean sonarqube"
     }
-}
+}    
