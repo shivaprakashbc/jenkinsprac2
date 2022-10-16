@@ -1,73 +1,54 @@
 pipeline {
+    agent any
+    stages {
+        stage ('Clone') {
+            steps {
+                git branch: 'master', url: "https://github.com/jfrog/project-examples.git"
+            }
+        }
 
-  agent any
+        stage ('Artifactory configuration') {
+            steps {
+                rtServer (
+                    id: "ARTIFACTORY_SERVER",
+                    url: SERVER_URL,
+                    credentialsId: CREDENTIALS
+                )
 
-  environment {
-    git_commit_message = ''
-    git_commit_diff = ''
-    git_commit_author = ''
-    git_commit_author_name = ''
-    git_commit_author_email = ''
-  }
+                rtMavenDeployer (
+                    id: "MAVEN_DEPLOYER",
+                    serverId: "ARTIFACTORY_SERVER",
+                    releaseRepo: ARTIFACTORY_LOCAL_RELEASE_REPO,
+                    snapshotRepo: ARTIFACTORY_LOCAL_SNAPSHOT_REPO
+                )
 
-  stages {
+                rtMavenResolver (
+                    id: "MAVEN_RESOLVER",
+                    serverId: "ARTIFACTORY_SERVER",
+                    releaseRepo: ARTIFACTORY_VIRTUAL_RELEASE_REPO,
+                    snapshotRepo: ARTIFACTORY_VIRTUAL_SNAPSHOT_REPO
+                )
+            }
+        }
 
-    // Build
-    stage('Build') {
-      agent {
-        label 'node'
-      }
-      steps {
-        deleteDir()
-        checkout scm
-      }
+        stage ('Exec Maven') {
+            steps {
+                rtMavenRun (
+                    tool: MAVEN_TOOL, // Tool name from Jenkins configuration
+                    pom: 'maven-examples/maven-example/pom.xml',
+                    goals: 'clean install',
+                    deployerId: "MAVEN_DEPLOYER",
+                    resolverId: "MAVEN_RESOLVER"
+                )
+            }
+        }
+
+        stage ('Publish build info') {
+            steps {
+                rtPublishBuildInfo (
+                    serverId: "ARTIFACTORY_SERVER"
+                )
+            }
+        }
     }
-
-    // Static Code Analysis
-    stage('Static Code Analysis') {
-      agent {
-        label 'node'
-      }
-      steps {
-        deleteDir()
-        checkout scm
-        sh "echo 'Run Static Code Analysis'"
-      }
-    }
-
-    // Unit Tests
-    stage('Unit Tests') {
-      agent {
-        label 'node'
-      }
-      steps {
-        deleteDir()
-        checkout scm
-        sh "echo 'Run Unit Tests'"
-      }
-    }
-
-    // Acceptance Tests
-    stage('Acceptance Tests') {
-      agent {
-        label 'node'
-      }
-      steps {
-        deleteDir()
-        checkout scm
-        sh "echo 'Run Acceptance Tests'"
-      }
-    }
-
-  }
-  post {
-    success {
-      sh "echo 'Send mail on success'"
-      // mail to:"me@example.com", subject:"SUCCESS: ${currentBuild.fullDisplayName}", body: "Yay, we passed."
-    }
-    failure {
-      sh "echo 'Send mail on failure'"
-      // mail to:"me@example.com", subject:"FAILURE: ${currentBuild.fullDisplayName}", body: "Boo, we failed."
-    }
-  }
 }
