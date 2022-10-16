@@ -1,54 +1,74 @@
 pipeline {
-    agent any
-    stages {
-        stage ('Clone') {
-            steps {
-                git branch: 'master', url: "https://github.com/shivaprakashbc/project-examples.git"
+   agent any
+    
+   environment {
+      VALUE_ONE = '1'
+      VALUE_TWO = '2'
+      VALUE_THREE = '3'
+   }
+    
+   stages {
+      
+      // Execute when branch = 'master'
+      stage("BASIC WHEN - Branch") {
+         when {
+		    branch 'master'
+		 }
+         steps {
+            echo 'BASIC WHEN - Master Branch!'
+         }
+      }
+      
+      // Expression based when example with AND
+      stage('WHEN EXPRESSION with AND') {
+         when {
+            expression {
+               VALUE_ONE == '1' && VALUE_THREE == '3'
+            }
+         }
+         steps {
+            echo 'WHEN with AND expression works!'
+         }
+      }
+      
+      // Expression based when example
+      stage('WHEN EXPRESSION with OR') {
+         when {
+            expression {
+               VALUE_ONE == '1' || VALUE_THREE == '2'
+            }
+         }
+         steps {
+            echo 'WHEN with OR expression works!'
+         }
+      }
+      
+      // When - AllOf Example
+      stage("AllOf") {
+        when {
+            allOf {
+                environment name:'VALUE_ONE', value: '1'
+                environment name:'VALUE_TWO', value: '2'
             }
         }
-
-        stage ('Artifactory configuration') {
-            steps {
-                rtServer (
-                    id: "ARTIFACTORY_SERVER",
-                    url: SERVER_URL,
-                    credentialsId: CREDENTIALS
-                )
-
-                rtMavenDeployer (
-                    id: "MAVEN_DEPLOYER",
-                    serverId: "ARTIFACTORY_SERVER",
-                    releaseRepo: ARTIFACTORY_LOCAL_RELEASE_REPO,
-                    snapshotRepo: ARTIFACTORY_LOCAL_SNAPSHOT_REPO
-                )
-
-                rtMavenResolver (
-                    id: "MAVEN_RESOLVER",
-                    serverId: "ARTIFACTORY_SERVER",
-                    releaseRepo: ARTIFACTORY_VIRTUAL_RELEASE_REPO,
-                    snapshotRepo: ARTIFACTORY_VIRTUAL_SNAPSHOT_REPO
-                )
-            }
+        steps {
+            echo "AllOf Works!!"
         }
-
-        stage ('Exec Maven') {
-            steps {
-                rtMavenRun (
-                    tool: MAVEN_TOOL, // Tool name from Jenkins configuration
-                    pom: 'maven-examples/maven-example/pom.xml',
-                    goals: 'clean install',
-                    deployerId: "MAVEN_DEPLOYER",
-                    resolverId: "MAVEN_RESOLVER"
-                )
+      }
+      
+      // When - Not AnyOf Example
+      stage("Not AnyOf") {
+         when {
+            not {
+               anyOf {
+                  branch "development"
+                  environment name:'VALUE_TWO', value: '4'
+               }
             }
-        }
-
-        stage ('Publish build info') {
-            steps {
-                rtPublishBuildInfo (
-                    serverId: "ARTIFACTORY_SERVER"
-                )
-            }
-        }
-    }
+         }
+         steps {
+            echo "Not AnyOf - Works!"
+         }
+      }
+   }
 }
