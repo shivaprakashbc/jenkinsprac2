@@ -1,10 +1,10 @@
-node {
-    stage 'Checkout'
-
-    checkout scm
-
-    stage 'Gradle Static Analysis'
-    withSonarQubeEnv {
-        sh "./gradlew clean sonarqube"
-    }
-}    
+pipeline {
+   agent any
+   stages {
+      stage('Say Hello') {
+         steps {
+            echo 'Hello World!'
+         }
+      }
+   }
+}
